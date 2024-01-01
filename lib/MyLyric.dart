@@ -206,14 +206,20 @@ class MyLyric_c {
         for (final item in relist) {
           var mm = int.tryParse(item[2] ?? "") ?? 0;
           var ss = int.tryParse(item[3] ?? "") ?? 0;
-          var ff = int.tryParse(item[5] ?? "") ?? 0;
+          final ff_str = item[5] ?? "";
+          double ff = int.tryParse(ff_str)?.toDouble() ?? 0;
           if (mm < 0 || ss < 0 || ff < 0) {
             // 有一个值为负，则全部置零
             mm = 0;
             ss = 0;
             ff = 0;
           }
-          timelist.add((mm * 60) + ss + (ff / 1000));
+          if (ff_str.length == 2) {
+            ff = ff / 100;
+          } else if (ff_str.length == 3) {
+            ff = ff / 1000;
+          }
+          timelist.add((mm * 60) + ss + ff);
         }
       }
       return _ParseLyricObj_c(
