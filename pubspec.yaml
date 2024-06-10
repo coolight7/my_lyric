@@ -1,10 +1,11 @@
 name: my_lyric
 description: A Flutter package to encode and decode lrc.
-version: 0.1.0
-homepage: 
+version: 0.1.1
+homepage: https://github.com/coolight7/my_lyric
+publish_to: "https://pub.dartlang.org"
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=2.14.0 <4.0.0'
   flutter: ">=1.17.0"
 
 dependencies:
@@ -14,7 +15,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
+  flutter_lints: ^2.0.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -22,6 +23,7 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
+  uses-material-design: false
   # To add assets to your package, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

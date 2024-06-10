@@ -23,12 +23,12 @@ class LyricSrcItemEntity_c {
   String get timeStr => MyLyric_c.formatLyricTimeStr(time);
 
   factory LyricSrcItemEntity_c.fromJson(Map<String, dynamic> json) {
-    final timeJson = json["time"];
+    final json_time = json["time"];
     double time = 0;
-    if (timeJson is double) {
-      time = timeJson;
-    } else if (timeJson is int) {
-      time = timeJson.toDouble();
+    if (json_time is double) {
+      time = json_time;
+    } else if (json_time is int) {
+      time = json_time.toDouble();
     }
     return LyricSrcItemEntity_c(
       time: time,
@@ -57,17 +57,28 @@ class LyricSrcEntity_c {
   static const String KEY_al = "al";
   static const String KEY_by = "by";
 
-  Map<String, dynamic> data;
+  Map<String, dynamic> info;
   List<LyricSrcItemEntity_c> lrc = [];
 
   LyricSrcEntity_c({
-    Map<String, dynamic>? data,
-  }) : data = data ?? {};
+    Map<String, dynamic>? info,
+  }) : info = info ?? {};
 
-  String? get ti => (data[KEY_ti] is String?) ? data[KEY_ti] : null;
-  String? get ar => (data[KEY_ar] is String?) ? data[KEY_ar] : null;
-  String? get al => (data[KEY_al] is String?) ? data[KEY_al] : null;
-  String? get by => (data[KEY_by] is String?) ? data[KEY_by] : null;
+  // TODO: key不区分大小写
+  String? getInfoItemWithString(String key) =>
+      (info[key] is String?) ? info[key] : null;
+
+  String? get ti => getInfoItemWithString(KEY_ti);
+  String? get ar => getInfoItemWithString(KEY_ar);
+  String? get al => getInfoItemWithString(KEY_al);
+  String? get by => getInfoItemWithString(KEY_by);
+
+  LyricSrcItemEntity_c? getLrcItemByIndex(int index) {
+    if (index < 0 || index >= lrc.length) {
+      return null;
+    }
+    return lrc[index];
+  }
 
   factory LyricSrcEntity_c.fromJson(Map<String, dynamic> json) {
     if (json.isEmpty) {
@@ -91,10 +102,10 @@ class LyricSrcEntity_c {
         resrc.lrc.add(LyricSrcItemEntity_c.fromJson(list[i]));
       }
     }
-    // data
+    // info
     json.forEach((key, value) {
       if (key != "lrc") {
-        resrc.data[key] = value;
+        resrc.info[key] = value;
       }
     });
     return resrc;
@@ -102,7 +113,8 @@ class LyricSrcEntity_c {
 
   Map<String, dynamic> toJson() {
     final remap = <String, dynamic>{};
-    data.forEach((key, value) {
+    // 将 [info] 和 [lrc]合并到一个map中
+    info.forEach((key, value) {
       if (key != "lrc") {
         remap[key] = value;
       }
@@ -112,11 +124,11 @@ class LyricSrcEntity_c {
   }
 
   LyricSrcEntity_c copyWith({
-    Map<String, dynamic>? data,
+    Map<String, dynamic>? info,
     List<LyricSrcItemEntity_c>? lrc,
   }) {
     final reSrc = LyricSrcEntity_c(
-      data: data ?? this.data,
+      info: info ?? this.info,
     );
     if (null != lrc) {
       reSrc.lrc = lrc;
@@ -134,8 +146,8 @@ enum _ParseLyricType_e {
   Info,
 }
 
+/// 解析歌词行使用的结构体
 class _ParseLyricObj_c {
-  // 解析歌词使用的结构体
   String? typeStr;
   _ParseLyricType_e type;
   List<double> timelist;
@@ -149,11 +161,13 @@ class _ParseLyricObj_c {
   });
 }
 
+/// TODO: 逐字歌词支持
 class MyLyric_c {
   /// 解析单行歌词
+  /// * [removeEmptyLine] 是否删除包含歌词时间，但内容却为空的行
   static _ParseLyricObj_c? _decodeLrcStrLine(
     String line, {
-    bool removeEmptyLine = true, // 是否删除包含歌词时间，但内容却为空的行
+    bool removeEmptyLine = true,
   }) {
     /// 匹配信息行
     /// * tr
@@ -214,6 +228,9 @@ class MyLyric_c {
             ss = 0;
             ff = 0;
           }
+          // 将ff计算回真实毫秒值
+          // TODO：取整个文件里最长的 [ff_str.length] 作为全局计算长度，
+          // 因为可能编码时未考虑补充前导零，导致出现：[01:22.33]、[01:22.7]、[01:22.123]
           if (ff_str.length == 2) {
             ff = ff / 100;
           } else if (ff_str.length == 3) {
@@ -242,6 +259,7 @@ class MyLyric_c {
   }
 
   /// * 解析歌词文件 .lrc
+  /// * [removeEmptyLine] 是否删除包含歌词时间，但内容却为空的行
   /// * [limitInfoType] 限制需要的 info 类型，默认不传入则接收所有的 info
   static LyricSrcEntity_c decodeLrcString(
     String lrcStr, {
@@ -249,11 +267,13 @@ class MyLyric_c {
     bool Function(String typeStr)? limitInfoType,
   }) {
     final lrcObj = LyricSrcEntity_c();
-    var lrcArr = lrcStr.split(RegExp(r"\n|\r")); // 按行切割
+    // 按行切割
+    var lrcArr = lrcStr.split(RegExp(r"\n|\r"));
     for (int i = 0; i < lrcArr.length; ++i) {
-      lrcArr[i].replaceAll(RegExp(r"\s+"), ''); // 去掉空白符
+      // 去掉空白符
+      lrcArr[i].replaceAll(RegExp(r"\s+"), '');
       if (lrcArr[i].isEmpty) {
-        // 如果是空行则到下一行
+        // 如果是空行则丢弃这一行
         continue;
       }
       // 逐行解析
@@ -284,7 +304,7 @@ class MyLyric_c {
           if (true == line.typeStr?.isNotEmpty &&
               line.typeStr != "lrc" &&
               false != limitInfoType?.call(line.typeStr!)) {
-            lrcObj.data[line.typeStr!] = line.content;
+            lrcObj.info[line.typeStr!] = line.content;
           }
           break;
       }
@@ -304,7 +324,7 @@ class MyLyric_c {
         lastAvailTime = item.time;
         templist.add(MapEntry(item.time, item));
       } else {
-        // 没有指定时间，则回退取最近一次正的时间
+        // 没有指定时间，则回退取最近一行歌词的正的时间
         templist.add(MapEntry(lastAvailTime, item));
       }
     }
@@ -330,15 +350,15 @@ class MyLyric_c {
     return data;
   }
 
-  /// * 将 [in_timeSS] 转为 [HH:]MM:SS.(MS/10) 时间格式字符串
-  /// * [in_timeSS] 的单位：秒 s
+  /// * 将 [in_second] 转为 [HH:]MM:SS.(MS/10) 时间格式字符串
+  /// * [in_second] 的单位：秒 s
   /// * 注意：
   ///   * 毫秒部分会除以10显示
-  static String formatLyricTimeStr(double in_timeSS) {
-    if (in_timeSS > 0) {
-      var minute = in_timeSS ~/ 60;
-      var second = in_timeSS.toInt() % 60;
-      var msecond = in_timeSS * 1000 % 1000 ~/ 10;
+  static String formatLyricTimeStr(double in_second) {
+    if (in_second > 0) {
+      var minute = in_second ~/ 60;
+      var second = in_second.toInt() % 60;
+      var msecond = in_second * 1000 % 1000 ~/ 10;
       String restr = "";
       if (minute < 10) {
         restr += "0";
