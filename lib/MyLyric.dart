@@ -1,7 +1,8 @@
 // ignore_for_file: file_names, non_constant_identifier_names, camel_case_types, constant_identifier_names
 
-import 'GlobalUtil.dart';
 import 'dart:convert' as convert;
+
+import 'package:my_util/MyUtil.dart';
 
 class LyricSrcItemEntity_c {
   /// * 歌词时间戳，单位：秒
@@ -246,7 +247,7 @@ class MyLyric_c {
       );
     } else {
       // 无时间歌词
-      final reLine = GlobalUtil_c.stringRemoveBetweenSpace(line);
+      final reLine = removeBetweenSpace(line);
       if (removeEmptyLine && reLine.isEmpty) {
         return null;
       }
@@ -255,6 +256,29 @@ class MyLyric_c {
         timelist: [],
         content: reLine,
       );
+    }
+  }
+
+  /// 移除[str]两边的（空格|制表符\t）
+  static String removeBetweenSpace(String str) {
+    if (str.isEmpty) {
+      return str;
+    }
+    int left = 0, right = str.length - 1;
+    for (; right >= left; --right) {
+      if (str[right] != ' ' && str[right] != '\t') {
+        break;
+      }
+    }
+    for (; left <= right; ++left) {
+      if (str[left] != ' ' && str[left] != '\t') {
+        break;
+      }
+    }
+    if (left <= right) {
+      return str.substring(left, right + 1);
+    } else {
+      return "";
     }
   }
 
@@ -329,8 +353,7 @@ class MyLyric_c {
       }
     }
     // 进行稳定排序
-    final relist =
-        GlobalUtil_c.mergeSort<MapEntry<double, LyricSrcItemEntity_c>>(
+    final relist = MyUtil_c.mergeSort<MapEntry<double, LyricSrcItemEntity_c>>(
       templist,
       (left, right) => ((left.key - right.key) * 1000).toInt(),
     );

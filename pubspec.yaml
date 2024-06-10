@@ -11,6 +11,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  my_util:
+    git:
+      url: https://github.com/coolight7/my_util
 
 dev_dependencies:
   flutter_test:
