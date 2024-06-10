@@ -13,6 +13,9 @@ and the Flutter guide for
 
 A Flutter package to encode and decode lrc.
 
+## DOCS/文档
+* [中文文档](/README_CN.md)
+
 ## Features
 
 * You can use it to parse music lyric String (.lrc), lrc look like:
