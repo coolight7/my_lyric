@@ -213,7 +213,7 @@ class MyLyric_c {
     String line, {
     bool removeEmptyLine = true,
   }) {
-    /// 匹配信息行
+    /// 匹配信息标签，支持单行多标签和忽略信息标签外的值
     /// * tr
     /// * ar
     /// * al
@@ -222,17 +222,19 @@ class MyLyric_c {
     /// * ...
     /// * 非数字开头
     final result_info = RegExp(
-      r"[\s\S]*\[\s*([^\d]*)\s*\:([\s\S]*)\][\s\S]*",
+      r"\[([^\d\:]*)\:([^\]]*)\]",
     ).allMatches(line);
     if (result_info.isNotEmpty) {
       final relist = <_ParseLyricObj_c>[];
       for (final item in result_info) {
-        relist.add(_ParseLyricObj_c(
-          infoKey: item[1],
-          type: _ParseLyricType_e.Info,
-          timelist: [],
-          content: item[2] ?? "",
-        ));
+        final key = item[1];
+        if (null != key) {
+          relist.add(_ParseLyricObj_c(
+            infoKey: MyStringUtil_c.removeBetweenSpace(key),
+            type: _ParseLyricType_e.Info,
+            content: MyStringUtil_c.removeBetweenSpace(item[2] ?? ""),
+          ));
+        }
       }
       return relist;
     }
@@ -266,7 +268,7 @@ class MyLyric_c {
         // 移除内容为空的歌词行
         return null;
       }
-      // 提取时间
+      // 从连续的时间戳中提取时间
       final timelist = <double>[];
       if (null != timeTagList) {
         final relist = RegExp(
