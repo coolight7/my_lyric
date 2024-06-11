@@ -1,6 +1,6 @@
 name: my_lyric
 description: A Flutter package to encode and decode lrc.
-version: 0.1.1
+version: 0.1.2
 homepage: https://github.com/coolight7/my_lyric
 publish_to: "https://pub.dartlang.org"
 
@@ -14,6 +14,9 @@ dependencies:
   my_util:
     git:
       url: https://github.com/coolight7/my_util
+  my_string_util:
+    git:
+      url: https://github.com/coolight7/my_string_util
 
 dev_dependencies:
   flutter_test:

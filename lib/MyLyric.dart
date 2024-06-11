@@ -1,7 +1,9 @@
 // ignore_for_file: file_names, non_constant_identifier_names, camel_case_types, constant_identifier_names
 
+import 'dart:collection';
 import 'dart:convert' as convert;
 
+import 'package:my_string_util/MyStringUtil.dart';
 import 'package:my_util/MyUtil.dart';
 
 class LyricSrcItemEntity_c {
@@ -58,21 +60,45 @@ class LyricSrcEntity_c {
   static const String KEY_al = "al";
   static const String KEY_by = "by";
 
-  Map<String, dynamic> info;
-  List<LyricSrcItemEntity_c> lrc = [];
+  /// 歌词信息
+  /// * 可使用[s_createInfo]构造，让map的key忽略大小写
+  HashMap<String, dynamic> info;
+
+  /// 歌词内容
+  List<LyricSrcItemEntity_c> lrc;
 
   LyricSrcEntity_c({
-    Map<String, dynamic>? info,
-  }) : info = info ?? {};
+    HashMap<String, dynamic>? info,
+    List<LyricSrcItemEntity_c>? lrc,
+  })  : info = info ?? s_createInfo(),
+        lrc = lrc ?? [];
 
-  // TODO: key不区分大小写
-  String? getInfoItemWithString(String key) =>
-      (info[key] is String?) ? info[key] : null;
+  static HashMap<String, dynamic> s_createInfo() {
+    return HashMap<String, dynamic>(
+      equals: (p0, p1) {
+        return MyStringUtil_c.isIgnoreCaseEqual(p0, p1);
+      },
+      hashCode: (p0) {
+        return p0.toLowerCase().hashCode;
+      },
+      isValidKey: (p0) {
+        return (p0 is String);
+      },
+    );
+  }
 
-  String? get ti => getInfoItemWithString(KEY_ti);
-  String? get ar => getInfoItemWithString(KEY_ar);
-  String? get al => getInfoItemWithString(KEY_al);
-  String? get by => getInfoItemWithString(KEY_by);
+  bool get isEmpty => (info.isEmpty && lrc.isEmpty);
+  bool get isNotEmpty => (info.isNotEmpty || lrc.isNotEmpty);
+
+  String? get info_ti => getInfoItemWithString(KEY_ti);
+  String? get info_ar => getInfoItemWithString(KEY_ar);
+  String? get info_al => getInfoItemWithString(KEY_al);
+  String? get info_by => getInfoItemWithString(KEY_by);
+
+  String? getInfoItemWithString(String key) {
+    final result = info[key];
+    return (result is String) ? result : null;
+  }
 
   LyricSrcItemEntity_c? getLrcItemByIndex(int index) {
     if (index < 0 || index >= lrc.length) {
@@ -125,7 +151,7 @@ class LyricSrcEntity_c {
   }
 
   LyricSrcEntity_c copyWith({
-    Map<String, dynamic>? info,
+    HashMap<String, dynamic>? info,
     List<LyricSrcItemEntity_c>? lrc,
   }) {
     final reSrc = LyricSrcEntity_c(
@@ -247,7 +273,7 @@ class MyLyric_c {
       );
     } else {
       // 无时间歌词
-      final reLine = removeBetweenSpace(line);
+      final reLine = MyStringUtil_c.removeBetweenSpace(line);
       if (removeEmptyLine && reLine.isEmpty) {
         return null;
       }
@@ -256,29 +282,6 @@ class MyLyric_c {
         timelist: [],
         content: reLine,
       );
-    }
-  }
-
-  /// 移除[str]两边的（空格|制表符\t）
-  static String removeBetweenSpace(String str) {
-    if (str.isEmpty) {
-      return str;
-    }
-    int left = 0, right = str.length - 1;
-    for (; right >= left; --right) {
-      if (str[right] != ' ' && str[right] != '\t') {
-        break;
-      }
-    }
-    for (; left <= right; ++left) {
-      if (str[left] != ' ' && str[left] != '\t') {
-        break;
-      }
-    }
-    if (left <= right) {
-      return str.substring(left, right + 1);
-    } else {
-      return "";
     }
   }
 
