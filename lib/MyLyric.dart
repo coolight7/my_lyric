@@ -205,6 +205,19 @@ class _ParseLyricObj_c {
   });
 }
 
+class _ParseLyricTimeItem_c {
+  final int start, length;
+  final RegExpMatch? timeTag;
+  final String? content;
+
+  _ParseLyricTimeItem_c({
+    required this.start,
+    required this.length,
+    required this.timeTag,
+    required this.content,
+  });
+}
+
 /// TODO: 逐字歌词支持
 class MyLyric_c {
   /// 解析单行歌词
@@ -240,44 +253,97 @@ class MyLyric_c {
     }
 
     /// 匹配单个时间戳
-    /// * 支持 [mm:ss.ff]
     /// * 支持 [mm:ss]
-    /// * 支持 [+-mm:+-ss.+-ff], 如果出现负号，将会将其时间置零
-    const lyricTimeItemReg = r"\[[+-]?\d+\:[+-]?\d+([.:][+-]?\d+)?\]\s*";
+    /// * 支持 [mm:ss:ff]
+    /// * 支持 [mm:ss.ff]
+    /// * 支持指定数值正负号+-，但出现负号时，将会将其时间置零
+    /// * 其中ff ~ (-100, +1000)，超出范围将被置0
     const tagTimeItemReg = r"\[([+-]?\d+)\:([+-]?\d+)([.:]([+-]?\d+))?\]";
 
-    /// 匹配歌词行
-    final result = RegExp(
-      r"^[\s\S]*?((" + lyricTimeItemReg + r")+)([\s\S]*)$",
-    ).firstMatch(line);
-    if (result != null) {
-      // 时间taglist
-      final String? timeTagList = result[1];
-      // 内容，最后的([\s\S]*)
-      var content = result[4] ?? "";
-      if (content.isEmpty) {
-        // 截取时间taglist前面部分字符串 [\s\S]*?，认为是后置时间处理
-        content = line.substring(
-          0,
-          line.length - (timeTagList?.length ?? line.length),
-        );
+    /// 匹配歌词时间戳
+    final result = RegExp(tagTimeItemReg).allMatches(line);
+    if (result.isNotEmpty) {
+      // 将被返回的歌词数组
+      final relist = <_ParseLyricObj_c>[];
+      // 将[line]分段存入[resultList]
+      final resultList = <_ParseLyricTimeItem_c>[];
+      // 记录上一次操作的尾部坐标
+      int lastIndex = 0;
+      for (final item in result) {
+        final start = item.start;
+        final end = item.end;
+        if (start > lastIndex) {
+          // [item]之前有[content]
+          // 截取[content]加入分段列表
+          final content = MyStringUtil_c.removeBetweenSpace(line.substring(
+            lastIndex,
+            start,
+          ));
+          // 保留空字符串，确保时间对应的[content]正确，比如：
+          // [00:37][000:47.11]abc [000:50.11] [00:57:33]cool
+          // 应保留[000:50.11]对应一个空字符串，否则会被误认为和后面的[00:57:33]cool是一起的
+          resultList.add(_ParseLyricTimeItem_c(
+            start: start,
+            length: start - lastIndex,
+            timeTag: null,
+            content: content,
+          ));
+        }
+        // 添加[item]
+        resultList.add(_ParseLyricTimeItem_c(
+          start: start,
+          length: end - start,
+          timeTag: item,
+          content: null,
+        ));
+        lastIndex = end;
       }
-      // 移除两端的空白符号
-      content = MyStringUtil_c.removeBetweenSpace(content);
-      if (removeEmptyLine && content.isEmpty) {
-        // 移除内容为空的歌词行
-        return null;
+      if (lastIndex < line.length) {
+        // 最后一段字符串作为[content]
+        resultList.add(_ParseLyricTimeItem_c(
+          start: lastIndex,
+          length: line.length - lastIndex,
+          timeTag: null,
+          content: MyStringUtil_c.removeBetweenSpace(line.substring(
+            lastIndex,
+          )),
+        ));
       }
-      // 从连续的时间戳中提取时间
-      final timelist = <double>[];
-      if (null != timeTagList) {
-        final relist = RegExp(
-          r"(" + tagTimeItemReg + r"){1}?",
-        ).allMatches(timeTagList);
-        for (final item in relist) {
-          var mm = int.tryParse(item[2] ?? "") ?? 0;
-          var ss = int.tryParse(item[3] ?? "") ?? 0;
-          final ff_str = item[5] ?? "";
+      for (int i = 0; i < resultList.length; ++i) {
+        final item = resultList[i];
+        if (null != item.timeTag) {
+          // 是时间戳 [timeTag]
+          // 先从[item]的位置向右寻找第一个歌词内容，如果没有则从[item]的位置向左寻找
+          String? content;
+          for (int j = i; j < resultList.length; ++j) {
+            final current = resultList[j];
+            if (null != current.content) {
+              // 找到
+              content = current.content;
+              break;
+            }
+          }
+          if (null == content) {
+            // 未找到，向左寻找
+            for (int j = i; j-- > 0;) {
+              final current = resultList[j];
+              if (null != current.content) {
+                // 找到
+                content = current.content;
+                break;
+              }
+            }
+          }
+          content ??= "";
+          if (removeEmptyLine && content.isEmpty) {
+            // 移除内容为空的歌词行
+            continue;
+          }
+          // 非空行，添加
+          final timeTag = item.timeTag!;
+          var mm = int.tryParse(timeTag[1] ?? "") ?? 0;
+          var ss = int.tryParse(timeTag[2] ?? "") ?? 0;
+          final ff_str = timeTag[4] ?? "";
           double ff = int.tryParse(ff_str)?.toDouble() ?? 0;
           if (mm < 0 || ss < 0 || ff < 0) {
             // 有一个值为负，则全部置零
@@ -285,27 +351,30 @@ class MyLyric_c {
             ss = 0;
             ff = 0;
           }
-          // 将ff计算回真实毫秒值
-          if (ff_str.length == 1) {
-            ff = ff / 10;
-          } else if (ff_str.length == 2) {
-            ff = ff / 100;
-          } else if (ff_str.length == 3) {
-            ff = ff / 1000;
-          } else if (ff_str.length > 3) {
-            // 异常，毫秒部分长度不应多于三位数，置零
-            ff = 0;
+          if (ff > 0) {
+            // 将ff计算回真实毫秒值
+            if (ff_str.length == 1) {
+              ff = ff / 10;
+            } else if (ff_str.length == 2) {
+              ff = ff / 100;
+            } else if (ff_str.length == 3) {
+              ff = ff / 1000;
+            } else if (ff_str.length > 3) {
+              // 异常，毫秒部分长度不应多于三位数，置零
+              ff = 0;
+            }
           }
-          timelist.add((mm * 60) + ss + ff);
+          final time = (mm * 60) + ss + ff;
+          relist.add(_ParseLyricObj_c(
+            type: _ParseLyricType_e.Lrc,
+            content: content,
+            timelist: [time],
+          ));
+        } else {
+          // 是歌词内容 [content]
         }
       }
-      return [
-        _ParseLyricObj_c(
-          type: _ParseLyricType_e.Lrc,
-          timelist: timelist,
-          content: content,
-        )
-      ];
+      return relist;
     } else {
       // 无时间歌词
       final content = MyStringUtil_c.removeBetweenSpace(line);

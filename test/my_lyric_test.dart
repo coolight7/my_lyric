@@ -136,13 +136,18 @@ void test_parse() {
     // 多个时间且间隔开
     // * 忽略前面没时间的abc
     // * 拆分为[00:27][00:47:33]cool和[000:37]light处理
-    // lyric = MyLyric_c.decodeLrcString(
-    //   " abc  [00:27][00:47:33]cool[000:37]light",
-    // );
-    // expect(lyric.lrc.length, 3);
-    // expect(lyric.getLrcItemByIndex(0)?.content, "cool");
-    // expect(lyric.getLrcItemByIndex(1)?.content, "light"); // 按时间排序
-    // expect(lyric.getLrcItemByIndex(2)?.content, "cool");
+    lyric = MyLyric_c.decodeLrcString(
+      " abc  [00:27][00:47:33]cool [000:37]light",
+    );
+    expect(lyric.lrc.length, 3);
+    expect(lyric.getLrcItemByIndex(0)?.content, "cool");
+    expect(lyric.getLrcItemByIndex(1)?.content, "light"); // 按时间排序
+    expect(lyric.getLrcItemByIndex(2)?.content, "cool");
+
+    lyric = MyLyric_c.decodeLrcString(
+      " abc  [0:27][00:37][000:47.11]abc [000:50.11] [00:57:33]cool",
+    );
+    expect(lyric.lrc.length, 4);
 
     /// 后置时间戳
     lyric = MyLyric_c.decodeLrcString("cool[000:47.11][00:57:33]");
