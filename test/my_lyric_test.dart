@@ -49,8 +49,20 @@ void test_parse() {
   });
 
   test("测试解码单行LRC", () {
+    // 信息标签
     var lyric = MyLyric_c.decodeLrcString("[ti:天后]");
     expect(lyric.info_ti, "天后");
+    lyric = MyLyric_c.decodeLrcString("[TI:天后-2]  ++--");
+    expect(lyric.info_ti, "天后-2");
+    // 单行多个信息标签
+    lyric = MyLyric_c.decodeLrcString("  [TI:天后]abc[al:哈哈]aab[offset:+77]--");
+    expect(lyric.info_ti, "天后");
+    expect(lyric.info_al, "哈哈");
+    expect(lyric.info_offset, 77);
+    // 自定义信息标签
+    lyric = MyLyric_c.decodeLrcString("[WOW:天后-3]");
+    expect(lyric.getInfoItemWithString("wow"), "天后-3");
+    // offset
     lyric = MyLyric_c.decodeLrcString("[Offset:123]");
     expect(lyric.info_offset, 123);
     lyric = MyLyric_c.decodeLrcString("[Offset:+123]");
@@ -59,13 +71,16 @@ void test_parse() {
     expect(lyric.info_offset, -123);
     lyric = MyLyric_c.decodeLrcString("[Offset:-123.56]");
     expect(lyric.info_offset, -123.56);
-    lyric = MyLyric_c.decodeLrcString("[TI:天后-2]");
-    expect(lyric.info_ti, "天后-2");
-    lyric = MyLyric_c.decodeLrcString("[WOW:天后-3]");
-    expect(lyric.getInfoItemWithString("wow"), "天后-3");
+    // 歌词
     lyric = MyLyric_c.decodeLrcString("[00:27.43]终于找到借口");
     expect(lyric.getLrcItemByIndex(0)?.time, 27 + 43.0 / 100.0);
     expect(lyric.getLrcItemByIndex(0)?.content, "终于找到借口");
+
+    /// 空格移除
+    lyric = MyLyric_c.decodeLrcString("  [00:27]  co  ol  ");
+    expect(lyric.getLrcItemByIndex(0)?.content, "co  ol");
+    lyric = MyLyric_c.decodeLrcString("   [00:27]    ");
+    expect(lyric.getLrcItemByIndex(0), null);
   });
 
   test("测试解码LRC时间", () {
@@ -109,17 +124,25 @@ void test_parse() {
     expect(lyric.getLrcItemByIndex(0)?.time, 27);
 
     /// 单行内连续多个时间
-    lyric = MyLyric_c.decodeLrcString("[0:27][00:37][000:47.11][00:57:33]cool");
+    lyric = MyLyric_c.decodeLrcString(
+      " abc  [0:27][00:37][000:47.11][00:57:33]cool",
+    );
+    expect(lyric.lrc.length, 4);
+    expect(lyric.getLrcItemByIndex(0)?.content, "cool");
     expect(lyric.getLrcItemByIndex(0)?.time, 27);
     expect(lyric.getLrcItemByIndex(1)?.time, 37);
     expect(lyric.getLrcItemByIndex(2)?.time, 47 + 11.0 / 100);
     expect(lyric.getLrcItemByIndex(3)?.time, 57 + 33.0 / 100);
-
-    /// 空格移除
-    lyric = MyLyric_c.decodeLrcString("[00:27]  co  ol  ");
-    expect(lyric.getLrcItemByIndex(0)?.content, "co  ol");
-    lyric = MyLyric_c.decodeLrcString("[00:27]    ");
-    expect(lyric.getLrcItemByIndex(0), null);
+    // 多个时间且间隔开
+    // * 忽略前面没时间的abc
+    // * 拆分为[00:27][00:47:33]cool和[000:37]light处理
+    // lyric = MyLyric_c.decodeLrcString(
+    //   " abc  [00:27][00:47:33]cool[000:37]light",
+    // );
+    // expect(lyric.lrc.length, 3);
+    // expect(lyric.getLrcItemByIndex(0)?.content, "cool");
+    // expect(lyric.getLrcItemByIndex(1)?.content, "light"); // 按时间排序
+    // expect(lyric.getLrcItemByIndex(2)?.content, "cool");
 
     /// 后置时间戳
     lyric = MyLyric_c.decodeLrcString("cool[000:47.11][00:57:33]");
