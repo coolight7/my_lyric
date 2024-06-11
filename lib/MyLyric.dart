@@ -256,8 +256,6 @@ class MyLyric_c {
             ff = 0;
           }
           // 将ff计算回真实毫秒值
-          // TODO：取整个文件里最长的 [ff_str.length] 作为全局计算长度，
-          // 因为可能编码时未考虑补充前导零，导致出现：[01:22.33]、[01:22.7]、[01:22.123]
           if (ff_str.length == 2) {
             ff = ff / 100;
           } else if (ff_str.length == 3) {
