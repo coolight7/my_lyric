@@ -59,6 +59,7 @@ class LyricSrcEntity_c {
   static const String KEY_ar = "ar";
   static const String KEY_al = "al";
   static const String KEY_by = "by";
+  static const String KEY_offset = "offset";
 
   /// 歌词信息
   /// * 可使用[s_createInfo]构造，让map的key忽略大小写
@@ -90,10 +91,26 @@ class LyricSrcEntity_c {
   bool get isEmpty => (info.isEmpty && lrc.isEmpty);
   bool get isNotEmpty => (info.isNotEmpty || lrc.isNotEmpty);
 
+  /// 歌曲标题
   String? get info_ti => getInfoItemWithString(KEY_ti);
+
+  /// 艺术家
   String? get info_ar => getInfoItemWithString(KEY_ar);
+
+  /// 专辑名称
   String? get info_al => getInfoItemWithString(KEY_al);
+
+  /// LRC作者，指制作该LRC歌词的人
   String? get info_by => getInfoItemWithString(KEY_by);
+
+  /// 针对整体歌词时间的偏移量，单位毫秒ms
+  double? get info_offset {
+    final result = getInfoItemWithString(KEY_offset);
+    if (null == result) {
+      return null;
+    }
+    return double.tryParse(result);
+  }
 
   String? getInfoItemWithString(String key) {
     final result = info[key];
@@ -175,16 +192,16 @@ enum _ParseLyricType_e {
 
 /// 解析歌词行使用的结构体
 class _ParseLyricObj_c {
-  String? typeStr;
   _ParseLyricType_e type;
-  List<double> timelist;
+  String? infoKey;
+  List<double>? timelist;
   String content;
 
   _ParseLyricObj_c({
-    this.typeStr,
+    this.infoKey,
     required this.type,
-    required this.timelist,
     required this.content,
+    this.timelist,
   });
 }
 
@@ -192,7 +209,7 @@ class _ParseLyricObj_c {
 class MyLyric_c {
   /// 解析单行歌词
   /// * [removeEmptyLine] 是否删除包含歌词时间，但内容却为空的行
-  static _ParseLyricObj_c? _decodeLrcStrLine(
+  static List<_ParseLyricObj_c>? _decodeLrcStrLine(
     String line, {
     bool removeEmptyLine = true,
   }) {
@@ -204,16 +221,20 @@ class MyLyric_c {
     /// * offset
     /// * ...
     /// * 非数字开头
-    RegExpMatch? result = RegExp(
-      r"^[\s\S]*\[\s*([^\d]*)\s*\:([\s\S]*)\][\s\S]*$",
-    ).firstMatch(line);
-    if (result != null) {
-      return _ParseLyricObj_c(
-        typeStr: result[1],
-        type: _ParseLyricType_e.Info,
-        timelist: [],
-        content: result[2] ?? "",
-      );
+    final result_info = RegExp(
+      r"[\s\S]*\[\s*([^\d]*)\s*\:([\s\S]*)\][\s\S]*",
+    ).allMatches(line);
+    if (result_info.isNotEmpty) {
+      final relist = <_ParseLyricObj_c>[];
+      for (final item in result_info) {
+        relist.add(_ParseLyricObj_c(
+          infoKey: item[1],
+          type: _ParseLyricType_e.Info,
+          timelist: [],
+          content: item[2] ?? "",
+        ));
+      }
+      return relist;
     }
 
     /// 匹配单个时间戳
@@ -224,26 +245,33 @@ class MyLyric_c {
     const tagTimeItemReg = r"\[([+-]?\d+)\:([+-]?\d+)([.:]([+-]?\d+))?\]";
 
     /// 匹配歌词行
-    result = RegExp(
+    final result = RegExp(
       r"^[\s\S]*?((" + lyricTimeItemReg + r")+)([\s\S]*)$",
     ).firstMatch(line);
     if (result != null) {
-      final String? tags = result[1];
+      // 时间taglist
+      final String? timeTagList = result[1];
+      // 内容，最后的([\s\S]*)
       var content = result[4] ?? "";
+      if (content.isEmpty) {
+        // 截取时间taglist前面部分字符串 [\s\S]*?，认为是后置时间处理
+        content = line.substring(
+          0,
+          line.length - (timeTagList?.length ?? line.length),
+        );
+      }
+      // 移除两端的空白符号
+      content = MyStringUtil_c.removeBetweenSpace(content);
       if (removeEmptyLine && content.isEmpty) {
-        content =
-            line.substring(0, line.length - (tags?.length ?? line.length));
-        if (content.isEmpty) {
-          // 移除内容为空的歌词行
-          return null;
-        }
+        // 移除内容为空的歌词行
+        return null;
       }
       // 提取时间
       final timelist = <double>[];
-      if (null != tags) {
+      if (null != timeTagList) {
         final relist = RegExp(
           r"(" + tagTimeItemReg + r"){1}?",
-        ).allMatches(tags);
+        ).allMatches(timeTagList);
         for (final item in relist) {
           var mm = int.tryParse(item[2] ?? "") ?? 0;
           var ss = int.tryParse(item[3] ?? "") ?? 0;
@@ -256,30 +284,38 @@ class MyLyric_c {
             ff = 0;
           }
           // 将ff计算回真实毫秒值
-          if (ff_str.length == 2) {
+          if (ff_str.length == 1) {
+            ff = ff / 10;
+          } else if (ff_str.length == 2) {
             ff = ff / 100;
           } else if (ff_str.length == 3) {
             ff = ff / 1000;
+          } else if (ff_str.length > 3) {
+            // 异常，毫秒部分长度不应多于三位数，置零
+            ff = 0;
           }
           timelist.add((mm * 60) + ss + ff);
         }
       }
-      return _ParseLyricObj_c(
-        type: _ParseLyricType_e.Lrc,
-        timelist: timelist,
-        content: content,
-      );
+      return [
+        _ParseLyricObj_c(
+          type: _ParseLyricType_e.Lrc,
+          timelist: timelist,
+          content: content,
+        )
+      ];
     } else {
       // 无时间歌词
-      final reLine = MyStringUtil_c.removeBetweenSpace(line);
-      if (removeEmptyLine && reLine.isEmpty) {
+      final content = MyStringUtil_c.removeBetweenSpace(line);
+      if (removeEmptyLine && content.isEmpty) {
         return null;
       }
-      return _ParseLyricObj_c(
-        type: _ParseLyricType_e.Lrc,
-        timelist: [],
-        content: reLine,
-      );
+      return [
+        _ParseLyricObj_c(
+          type: _ParseLyricType_e.Lrc,
+          content: content,
+        )
+      ];
     }
   }
 
@@ -302,36 +338,39 @@ class MyLyric_c {
         continue;
       }
       // 逐行解析
-      final line = _decodeLrcStrLine(
+      final relist = _decodeLrcStrLine(
         lrcArr[i],
         removeEmptyLine: removeEmptyLine,
       );
-      if (null == line) {
+      if (null == relist) {
         continue;
       }
-      switch (line.type) {
-        case _ParseLyricType_e.Lrc:
-          if (line.timelist.isNotEmpty) {
-            for (int i = 0; i < line.timelist.length; ++i) {
+      for (final line in relist) {
+        switch (line.type) {
+          case _ParseLyricType_e.Lrc:
+            final timelist = line.timelist;
+            if (null != timelist && timelist.isNotEmpty) {
+              for (int i = 0; i < timelist.length; ++i) {
+                lrcObj.lrc.add(LyricSrcItemEntity_c(
+                  time: timelist[i],
+                  content: line.content,
+                ));
+              }
+            } else {
               lrcObj.lrc.add(LyricSrcItemEntity_c(
-                time: line.timelist[i],
+                time: -1,
                 content: line.content,
               ));
             }
-          } else {
-            lrcObj.lrc.add(LyricSrcItemEntity_c(
-              time: -1,
-              content: line.content,
-            ));
-          }
-          break;
-        case _ParseLyricType_e.Info:
-          if (true == line.typeStr?.isNotEmpty &&
-              line.typeStr != "lrc" &&
-              false != limitInfoType?.call(line.typeStr!)) {
-            lrcObj.info[line.typeStr!] = line.content;
-          }
-          break;
+            break;
+          case _ParseLyricType_e.Info:
+            if (true == line.infoKey?.isNotEmpty &&
+                line.infoKey != "lrc" &&
+                false != limitInfoType?.call(line.infoKey!)) {
+              lrcObj.info[line.infoKey!] = line.content;
+            }
+            break;
+        }
       }
     }
     // 排序

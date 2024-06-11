@@ -47,4 +47,95 @@ void test_parse() {
     expect(MyLyric_c.decodeLrcString(" \n \n \n "), isEmpty);
     expect(MyLyric_c.decodeLrcString("\r \n \r \t \n"), isEmpty);
   });
+
+  test("测试解码单行LRC", () {
+    var lyric = MyLyric_c.decodeLrcString("[ti:天后]");
+    expect(lyric.info_ti, "天后");
+    lyric = MyLyric_c.decodeLrcString("[Offset:123]");
+    expect(lyric.info_offset, 123);
+    lyric = MyLyric_c.decodeLrcString("[Offset:+123]");
+    expect(lyric.info_offset, 123);
+    lyric = MyLyric_c.decodeLrcString("[Offset:-123]");
+    expect(lyric.info_offset, -123);
+    lyric = MyLyric_c.decodeLrcString("[Offset:-123.56]");
+    expect(lyric.info_offset, -123.56);
+    lyric = MyLyric_c.decodeLrcString("[TI:天后-2]");
+    expect(lyric.info_ti, "天后-2");
+    lyric = MyLyric_c.decodeLrcString("[WOW:天后-3]");
+    expect(lyric.getInfoItemWithString("wow"), "天后-3");
+    lyric = MyLyric_c.decodeLrcString("[00:27.43]终于找到借口");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 43.0 / 100.0);
+    expect(lyric.getLrcItemByIndex(0)?.content, "终于找到借口");
+  });
+
+  test("测试解码LRC时间", () {
+    // ms:1000
+    var lyric = MyLyric_c.decodeLrcString("[00:27.000]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+    lyric = MyLyric_c.decodeLrcString("[00:27.007]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 7.0 / 1000.0);
+    lyric = MyLyric_c.decodeLrcString("[00:27.077]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 77.0 / 1000.0);
+    lyric = MyLyric_c.decodeLrcString("[00:27.777]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 777.0 / 1000.0);
+    lyric = MyLyric_c.decodeLrcString("[00:27:777]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 777.0 / 1000.0);
+    lyric = MyLyric_c.decodeLrcString("[00:27.1000]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+    // ms:100
+    lyric = MyLyric_c.decodeLrcString("[00:27.00]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+    lyric = MyLyric_c.decodeLrcString("[00:27.07]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 7.0 / 100.0);
+    lyric = MyLyric_c.decodeLrcString("[00:27.77]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 77.0 / 100.0);
+    lyric = MyLyric_c.decodeLrcString("[00:27:77]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 77.0 / 100.0);
+    // ms:10
+    lyric = MyLyric_c.decodeLrcString("[00:27.0]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+    lyric = MyLyric_c.decodeLrcString("[00:27.7]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 7.0 / 10.0);
+    lyric = MyLyric_c.decodeLrcString("[00:27:7]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27 + 7.0 / 10.0);
+    // m:s
+    lyric = MyLyric_c.decodeLrcString("[00:27]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+    lyric = MyLyric_c.decodeLrcString("[01:27]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 60 + 27);
+    lyric = MyLyric_c.decodeLrcString("[0:27]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+    lyric = MyLyric_c.decodeLrcString("[000:27]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+
+    /// 单行内连续多个时间
+    lyric = MyLyric_c.decodeLrcString("[0:27][00:37][000:47.11][00:57:33]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 27);
+    expect(lyric.getLrcItemByIndex(1)?.time, 37);
+    expect(lyric.getLrcItemByIndex(2)?.time, 47 + 11.0 / 100);
+    expect(lyric.getLrcItemByIndex(3)?.time, 57 + 33.0 / 100);
+
+    /// 空格移除
+    lyric = MyLyric_c.decodeLrcString("[00:27]  co  ol  ");
+    expect(lyric.getLrcItemByIndex(0)?.content, "co  ol");
+    lyric = MyLyric_c.decodeLrcString("[00:27]    ");
+    expect(lyric.getLrcItemByIndex(0), null);
+
+    /// 后置时间戳
+    lyric = MyLyric_c.decodeLrcString("cool[000:47.11][00:57:33]");
+    expect(lyric.getLrcItemByIndex(0)?.time, 47 + 11.0 / 100);
+    expect(lyric.getLrcItemByIndex(0)?.content, "cool");
+    expect(lyric.getLrcItemByIndex(1)?.time, 57 + 33.0 / 100);
+    expect(lyric.getLrcItemByIndex(1)?.content, "cool");
+
+    /// 越界时间
+    lyric = MyLyric_c.decodeLrcString("[00:77:77]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 77 + 77.0 / 100.0);
+    lyric = MyLyric_c.decodeLrcString("[00:77:10000]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 77);
+    lyric = MyLyric_c.decodeLrcString("[00:77:-1]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 0);
+    lyric = MyLyric_c.decodeLrcString("[01:-1:00]cool");
+    expect(lyric.getLrcItemByIndex(0)?.time, 0);
+  });
 }
