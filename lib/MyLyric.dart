@@ -192,16 +192,16 @@ enum _ParseLyricType_e {
 
 /// 解析歌词行使用的结构体
 class _ParseLyricObj_c {
-  _ParseLyricType_e type;
-  String? infoKey;
-  List<double>? timelist;
-  String content;
+  final _ParseLyricType_e type;
+  final String? infoKey;
+  final double? time;
+  final String content;
 
   _ParseLyricObj_c({
     this.infoKey,
     required this.type,
     required this.content,
-    this.timelist,
+    this.time,
   });
 }
 
@@ -309,13 +309,15 @@ class MyLyric_c {
           )),
         ));
       }
+      // 记录过往最近的一个[content]
+      String? last_content;
       for (int i = 0; i < resultList.length; ++i) {
         final item = resultList[i];
         if (null != item.timeTag) {
           // 是时间戳 [timeTag]
           // 先从[item]的位置向右寻找第一个歌词内容，如果没有则从[item]的位置向左寻找
           String? content;
-          for (int j = i; j < resultList.length; ++j) {
+          for (int j = i + 1; j < resultList.length; ++j) {
             final current = resultList[j];
             if (null != current.content) {
               // 找到
@@ -323,18 +325,7 @@ class MyLyric_c {
               break;
             }
           }
-          if (null == content) {
-            // 未找到，向左寻找
-            for (int j = i; j-- > 0;) {
-              final current = resultList[j];
-              if (null != current.content) {
-                // 找到
-                content = current.content;
-                break;
-              }
-            }
-          }
-          content ??= "";
+          content ??= last_content ?? "";
           if (removeEmptyLine && content.isEmpty) {
             // 移除内容为空的歌词行
             continue;
@@ -368,10 +359,11 @@ class MyLyric_c {
           relist.add(_ParseLyricObj_c(
             type: _ParseLyricType_e.Lrc,
             content: content,
-            timelist: [time],
+            time: time,
           ));
         } else {
           // 是歌词内容 [content]
+          last_content = item.content;
         }
       }
       return relist;
@@ -419,20 +411,10 @@ class MyLyric_c {
       for (final line in relist) {
         switch (line.type) {
           case _ParseLyricType_e.Lrc:
-            final timelist = line.timelist;
-            if (null != timelist && timelist.isNotEmpty) {
-              for (int i = 0; i < timelist.length; ++i) {
-                lrcObj.lrc.add(LyricSrcItemEntity_c(
-                  time: timelist[i],
-                  content: line.content,
-                ));
-              }
-            } else {
-              lrcObj.lrc.add(LyricSrcItemEntity_c(
-                time: -1,
-                content: line.content,
-              ));
-            }
+            lrcObj.lrc.add(LyricSrcItemEntity_c(
+              time: line.time ?? -1,
+              content: line.content,
+            ));
             break;
           case _ParseLyricType_e.Info:
             if (true == line.infoKey?.isNotEmpty &&
