@@ -142,21 +142,19 @@ packages:
   my_string_util:
     dependency: "direct main"
     description:
-      path: "."
-      ref: HEAD
-      resolved-ref: "403fecdc4d6417380480d753e91464f6aef1b86f"
-      url: "https://github.com/coolight7/my_string_util"
-    source: git
-    version: "0.0.2"
-  my_util:
+      name: my_string_util
+      sha256: f5d7d5072039031c6a10a939f81534bf2445f697e05034ed5d170a23bb3acca1
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.1.0"
+  my_util_base:
     dependency: "direct main"
     description:
-      path: "."
-      ref: HEAD
-      resolved-ref: aae4da8e43a6cfb1261890005ab50aaf41fc5996
-      url: "https://github.com/coolight7/my_util"
-    source: git
-    version: "0.0.1"
+      name: my_util_base
+      sha256: b07d3a400b9ba06803b94854744ba516bdbe8a452e3d91d50903d1bad2d9aaee
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.1.0"
   path:
     dependency: transitive
     description:

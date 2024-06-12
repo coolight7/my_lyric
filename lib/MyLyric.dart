@@ -4,7 +4,7 @@ import 'dart:collection';
 import 'dart:convert' as convert;
 
 import 'package:my_string_util/MyStringUtil.dart';
-import 'package:my_util/MyUtil.dart';
+import 'package:my_util_base/MyUtil.dart';
 
 class LyricSrcItemEntity_c {
   /// * 歌词时间戳，单位：秒
