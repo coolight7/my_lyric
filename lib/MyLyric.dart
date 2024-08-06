@@ -98,6 +98,7 @@ class LyricSrcEntity_c {
   /// ## 判断 [index] 指定的 [lrc] 是否为翻译歌词的原文
   bool isTranslate_original(int index) {
     return ((index + 1) < lrc.length &&
+        (lrc[index].time >= 0) &&
         (lrc[index + 1].time < 0 || (lrc[index + 1].time == lrc[index].time)));
   }
 
@@ -110,6 +111,7 @@ class LyricSrcEntity_c {
   }) {
     return (false == (isTr_original ?? isTranslate_original(index)) &&
         ((index - 1) >= 0 &&
+            (lrc[index - 1].time >= 0) &&
             (lrc[index].time < 0 || (lrc[index].time == lrc[index - 1].time))));
   }
 

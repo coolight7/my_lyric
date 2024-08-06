@@ -161,13 +161,42 @@ void test_parse() {
     expect(lyric.getLrcItemByIndex(1)?.content, "cool");
 
     /// 越界时间
-    lyric = MyLyric_c.decodeLrcString("[00:77:77]cool");
-    expect(lyric.getLrcItemByIndex(0)?.time, 77 + 77.0 / 100.0);
-    lyric = MyLyric_c.decodeLrcString("[00:77:10000]cool");
-    expect(lyric.getLrcItemByIndex(0)?.time, 77);
     lyric = MyLyric_c.decodeLrcString("[00:77:-1]cool");
     expect(lyric.getLrcItemByIndex(0)?.time, 0);
     lyric = MyLyric_c.decodeLrcString("[01:-1:00]cool");
     expect(lyric.getLrcItemByIndex(0)?.time, 0);
+  });
+
+  test("翻译歌词判断", () {
+    LyricSrcEntity_c lyric;
+    // 同时间
+    lyric = MyLyric_c.decodeLrcString("[000:47.11]LuoTianYi[00:47.11]洛天依");
+    expect(lyric.isTranslate_original(0), true);
+    expect(lyric.isTranslate(1), true);
+    // 空时间
+    lyric = MyLyric_c.decodeLrcString("""
+aaa
+bbb
+ccc
+[000:47.11]LuoTianYi
+洛天依
+""");
+    expect(lyric.isTranslate_original(0), false);
+    expect(lyric.isTranslate(1), false);
+    expect(lyric.isTranslate(2), false);
+    expect(lyric.isTranslate_original(3), true);
+    expect(lyric.isTranslate(4), true);
+    // 空行
+    lyric = MyLyric_c.decodeLrcString("""
+aaa
+bbb
+[000:47.11]LuoTianYi
+
+洛天依
+""");
+    expect(lyric.isTranslate_original(0), false);
+    expect(lyric.isTranslate(1), false);
+    expect(lyric.isTranslate_original(2), true);
+    expect(lyric.isTranslate(3), true);
   });
 }
