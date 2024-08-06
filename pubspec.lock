@@ -67,6 +67,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  html_unescape:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "309c4f5776f6d38773602238a92bc942d946252a"
+      url: "https://github.com/coolight7/html_unescape"
+    source: git
+    version: "3.0.0"
   leak_tracker:
     dependency: transitive
     description:

@@ -1,7 +1,6 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:my_lyric/my_lyric.dart';
 
 void main() {
@@ -87,6 +86,21 @@ void test_parse() {
     expect(lyric.getLrcItemByIndex(0), null);
   });
 
+  test("转义html字符", () {
+    var lyric = MyLyric_c.decodeLrcString(
+      "[ti:&#60;洛天依&#62;]",
+      parseHtmlEscape: true,
+    );
+    expect(lyric.info_ti, "<洛天依>");
+    lyric = MyLyric_c.decodeLrcString(
+      "[00:27.000]&#60;洛天依&#62;&quot;",
+      parseHtmlEscape: true,
+    );
+    expect(
+      lyric.getLrcItemByIndex(0)?.content,
+      "<洛天依>\"",
+    );
+  });
   test("解码LRC时间", () {
     // ms:1000
     var lyric = MyLyric_c.decodeLrcString("[00:27.000]cool");

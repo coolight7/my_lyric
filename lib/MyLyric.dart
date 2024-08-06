@@ -2,7 +2,7 @@
 
 import 'dart:collection';
 import 'dart:convert' as convert;
-
+import 'package:html_unescape/html_unescape_small.dart';
 import 'package:my_string_util/MyStringUtil.dart';
 import 'package:my_util_base/MyUtil.dart';
 
@@ -289,10 +289,21 @@ class _ParseLyricTimeItem_c {
 class MyLyric_c {
   /// 解析单行歌词
   /// * [removeEmptyLine] 是否删除包含歌词时间，但内容却为空的行
+  /// * [parseHtmlEscape] 转换html的转义字符
   static List<_ParseLyricObj_c>? _decodeLrcStrLine(
     String line, {
     bool removeEmptyLine = true,
+    bool parseHtmlEscape = true,
   }) {
+    if (parseHtmlEscape) {
+      // 转义部分html字符
+      try {
+        line = HtmlUnescapeSmall().convert(line);
+      } catch (e) {
+        print(e);
+      }
+    }
+
     /// 匹配信息标签，支持单行多标签和忽略信息标签外的值
     /// * tr
     /// * ar
@@ -455,6 +466,7 @@ class MyLyric_c {
   static LyricSrcEntity_c decodeLrcString(
     String lrcStr, {
     bool removeEmptyLine = true,
+    bool parseHtmlEscape = true,
     bool Function(String typeStr)? limitInfoType,
   }) {
     final lrcObj = LyricSrcEntity_c();
@@ -471,6 +483,7 @@ class MyLyric_c {
       final relist = _decodeLrcStrLine(
         lrcArr[i],
         removeEmptyLine: removeEmptyLine,
+        parseHtmlEscape: parseHtmlEscape,
       );
       if (null == relist) {
         continue;
