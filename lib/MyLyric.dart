@@ -19,9 +19,6 @@ class LyricSrcItemEntity_c {
     this.content = "",
   });
 
-  /// 是否为翻译
-  bool get isTranslate => (time < 0);
-
   /// 将时间格式化为标准 lrc 格式的时间
   String get timeStr => MyLyric_c.formatLyricTimeStr(time);
 
@@ -97,6 +94,57 @@ class LyricSrcEntity_c {
 
   /// ## 是否 信息[info] 和 歌词[lrc] 中至少一方非空
   bool get isNotEmpty => (info.isNotEmpty || lrc.isNotEmpty);
+
+  /// ## 判断 [index] 指定的 [lrc] 是否为翻译歌词的原文
+  bool isTranslate_original(int index) {
+    return ((index + 1) < lrc.length &&
+        (lrc[index + 1].time < 0 || (lrc[index + 1].time == lrc[index].time)));
+  }
+
+  /// ## 判断 [index] 指定的 [lrc] 是否为翻译歌词的译文
+  /// * [isTr_original] 前置判断 [index] 指向的不是原文，显式传入可减少判断，不指定时
+  /// 会调用 [isTranslate_original] 判断
+  bool isTranslate(
+    int index, {
+    bool? isTr_original,
+  }) {
+    return (false == (isTr_original ?? isTranslate_original(index)) &&
+        ((index - 1) >= 0 &&
+            (lrc[index].time < 0 || (lrc[index].time == lrc[index - 1].time))));
+  }
+
+  /// ## 判断 [index] 指向的位置是否是应当高亮显示的翻译歌词原文
+  /// * [index] 待判断的歌词下标
+  /// * [selectIndex] 应当高亮的歌词下标
+  /// * [isTr_original] 是否 [index] 是翻译歌词原文，传入可减少判断，不指定是会
+  /// 调用 [isTranslate_original] 判断
+  bool isSelectTranslate_original(
+    int index,
+    int selectIndex, {
+    bool? isTr_original,
+  }) {
+    return (isTr_original ?? isTranslate_original(index)) &&
+        (selectIndex - index == 1);
+  }
+
+  /// ## 判断 [index] 指向的歌词是否应当高亮显示
+  bool isSelectTranslate(int index, int selectIndex) {
+    return (index == selectIndex);
+  }
+
+  /// ## 判断 [index] 指向的歌词是否应当高亮显示
+  bool isSelectLrc(
+    int index,
+    int selectIndex, {
+    bool? isTr_original,
+  }) {
+    return (isSelectTranslate(index, selectIndex) ||
+        isSelectTranslate_original(
+          index,
+          selectIndex,
+          isTr_original: isTr_original,
+        ));
+  }
 
   /// 歌曲标题
   String? get info_ti => getInfoItemWithString(KEY_ti);
@@ -412,7 +460,7 @@ class MyLyric_c {
     var lrcArr = lrcStr.split(RegExp(r"\n|\r"));
     for (int i = 0; i < lrcArr.length; ++i) {
       // 去掉空白符
-      lrcArr[i].replaceAll(RegExp(r"\s+"), '');
+      MyStringUtil_c.removeAllSpace(lrcArr[i]);
       if (lrcArr[i].isEmpty) {
         // 如果是空行则丢弃这一行
         continue;
