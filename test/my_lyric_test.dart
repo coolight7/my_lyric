@@ -11,10 +11,12 @@ void main() {
 }
 
 void test_info_ignoreCase() {
-  test("测试歌词信息[LyricSrcEntity_c.info]忽略大小写", () {
+  test("歌词信息[LyricSrcEntity_c.info]忽略大小写", () {
     final lyric = LyricSrcEntity_c();
     lyric.info["HELLO"] = "WORLD";
     lyric.info["wow"] = "value";
+    expect(lyric.info[""], null);
+    expect(lyric.info["abc"], null);
     expect(lyric.info["HELLO"], "WORLD");
     expect(lyric.info["hello"], "WORLD");
     expect(lyric.info["WOW"], "value");
@@ -38,7 +40,7 @@ void test_LyricSrcEntity_c() {
 }
 
 void test_parse() {
-  test("测试解码空歌词", () {
+  test("解码空歌词", () {
     expect(MyLyric_c.decodeLrcString(""), isEmpty);
     expect(MyLyric_c.decodeLrcString("      "), isEmpty);
     expect(MyLyric_c.decodeLrcString("\n\n\n"), isEmpty);
@@ -48,7 +50,7 @@ void test_parse() {
     expect(MyLyric_c.decodeLrcString("\r \n \r \t \n"), isEmpty);
   });
 
-  test("测试解码单行LRC", () {
+  test("解码单行LRC", () {
     // 信息标签
     var lyric = MyLyric_c.decodeLrcString("[ti:天后]");
     expect(lyric.info_ti, "天后");
@@ -77,13 +79,15 @@ void test_parse() {
     expect(lyric.getLrcItemByIndex(0)?.content, "终于找到借口");
 
     /// 空格移除
+    lyric = MyLyric_c.decodeLrcString("  [WOW: 天后 -  3 ]  ");
+    expect(lyric.getInfoItemWithString("wow"), "天后 -  3");
     lyric = MyLyric_c.decodeLrcString("  [00:27]  co  ol  ");
     expect(lyric.getLrcItemByIndex(0)?.content, "co  ol");
     lyric = MyLyric_c.decodeLrcString("   [00:27]    ");
     expect(lyric.getLrcItemByIndex(0), null);
   });
 
-  test("测试解码LRC时间", () {
+  test("解码LRC时间", () {
     // ms:1000
     var lyric = MyLyric_c.decodeLrcString("[00:27.000]cool");
     expect(lyric.getLrcItemByIndex(0)?.time, 27);

@@ -55,11 +55,15 @@ class LyricSrcItemEntity_c {
 }
 
 class LyricSrcEntity_c {
-  static const String KEY_ti = "ti";
-  static const String KEY_ar = "ar";
   static const String KEY_al = "al";
+  static const String KEY_ar = "ar";
   static const String KEY_by = "by";
   static const String KEY_offset = "offset";
+  static const String KEY_ti = "ti";
+  // 创建此LRC文件的播放器或编辑器
+  static const String KEY_re = "re";
+  // 程序的版本
+  static const String KEY_ve = "ve";
 
   /// 歌词信息
   /// * 可使用[s_createInfo]构造，让map的key忽略大小写
@@ -88,7 +92,10 @@ class LyricSrcEntity_c {
     );
   }
 
+  /// ## 是否 信息[info] 和 歌词[lrc] 都为空
   bool get isEmpty => (info.isEmpty && lrc.isEmpty);
+
+  /// ## 是否 信息[info] 和 歌词[lrc] 中至少一方非空
   bool get isNotEmpty => (info.isNotEmpty || lrc.isNotEmpty);
 
   /// 歌曲标题
@@ -112,11 +119,21 @@ class LyricSrcEntity_c {
     return double.tryParse(result);
   }
 
+  /// 创建此LRC文件的播放器或编辑器
+  String? get info_re => getInfoItemWithString(KEY_re);
+
+  /// 程序的版本
+  String? get info_ve => getInfoItemWithString(KEY_ve);
+
+  /// ## 根据 [key] 查找对应的信息
+  /// * 不存在或非 [String] 类型时返回 [Null]
   String? getInfoItemWithString(String key) {
     final result = info[key];
     return (result is String) ? result : null;
   }
 
+  /// ## 根据 [index] 获取lrc单项
+  /// * 当 [index] 越界时返回 [Null]
   LyricSrcItemEntity_c? getLrcItemByIndex(int index) {
     if (index < 0 || index >= lrc.length) {
       return null;
