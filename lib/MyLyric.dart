@@ -2,7 +2,7 @@
 
 import 'dart:collection';
 import 'dart:convert' as convert;
-import 'package:html_unescape/html_unescape_small.dart';
+import 'package:html_unescape_xx/html_unescape.dart';
 import 'package:my_string_util/MyStringUtil.dart';
 import 'package:my_util_base/MyUtil.dart';
 
