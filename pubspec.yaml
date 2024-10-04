@@ -1,6 +1,6 @@
 name: my_lyric
 description: A Flutter package to encode and decode lrc.
-version: 0.3.0
+version: 0.3.1
 homepage: https://github.com/coolight7/my_lyric
 
 environment:
