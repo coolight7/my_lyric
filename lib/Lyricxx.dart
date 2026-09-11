@@ -185,17 +185,25 @@ class LyricSrcItemEntity_c {
     final list = json["timelist"];
     if (list is List && list.isNotEmpty) {
       for (final item in list) {
-        result.timelist.add(LyricSrcTime_c.fromJson(item));
+        // 兼容两种形式：JSON 解析出的 Map，以及旧数据中直接存放的对象
+        if (item is Map) {
+          result.timelist.add(LyricSrcTime_c.fromJson(item));
+        } else if (item is LyricSrcTime_c) {
+          result.timelist.add(item.copyWith());
+        }
       }
     }
     return result;
   }
 
+  /// [toJson] 返回的必须是可 JSON 化的数据（不能直接放入实体对象），
+  /// 否则 [fromJson] 无法解析 `toJson()` 的直接结果
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "time": time,
       "content": content,
-      if (timelist.isNotEmpty) "timelist": timelist,
+      if (timelist.isNotEmpty)
+        "timelist": List.generate(timelist.length, (i) => timelist[i].toJson()),
     };
   }
 
@@ -203,7 +211,8 @@ class LyricSrcItemEntity_c {
     return <String, dynamic>{
       "time": time,
       "content": content,
-      if (timelist.isNotEmpty) "timelist": timelist,
+      if (timelist.isNotEmpty)
+        "timelist": List.generate(timelist.length, (i) => timelist[i].toJson()),
       if (null != simulateStart) "simulateStart": simulateStart,
       if (null != simulateEnd) "simulateEnd": simulateEnd,
     };
@@ -462,7 +471,13 @@ class LyricSrcEntity_c {
     }
     if (null != list) {
       for (int i = 0; i < list.length; ++i) {
-        resrc.lrc.add(LyricSrcItemEntity_c.fromJson(list[i]));
+        final item = list[i];
+        // 兼容两种形式：JSON 解析出的 Map，以及直接由 toJson() 得到的实体对象
+        if (item is Map) {
+          resrc.lrc.add(LyricSrcItemEntity_c.fromJson(item));
+        } else if (item is LyricSrcItemEntity_c) {
+          resrc.lrc.add(item.copyWith());
+        }
       }
     }
     // info
@@ -489,7 +504,7 @@ class LyricSrcEntity_c {
         return lrc[i].toJsonAppendSimulateTime();
       });
     } else {
-      remap["lrc"] = lrc;
+      remap["lrc"] = List.generate(lrc.length, (i) => lrc[i].toJson());
     }
     remap["timeType"] = LyricTimeType_c.toInt(timeType);
     return remap;
@@ -659,7 +674,8 @@ class Lyricxx_c {
     /// * 支持 [mm:ss:ff]
     /// * 支持 [mm:ss.ff]
     /// * 支持指定数值正负号+-，但出现负号时，将会将其时间置零
-    /// * 其中ff ~ (-100, +1000)，超出范围将被置0
+    /// * ff 为 1~3 位小数（按位数分别除以 10/100/1000），超出 3 位视为异常并置0
+    /// * 注意：不支持 [hh:mm:ss]，`[01:02:03]` 会被解析为 1分2秒03毫秒
     const tagTimeItemReg =
         r"[\[\<]([+-]?\d+)\:([+-]?\d+)([.:]([+-]?\d+))?[\]\>]";
 
@@ -879,7 +895,9 @@ class Lyricxx_c {
           avail = true;
         }
       }
-      if (avail) {
+      // 整行内容都为空时，默认丢弃该行；
+      // 但 [removeEmptyLine] = false 表示调用方希望保留空内容行，此时应尊重该参数
+      if (avail || false == removeEmptyLine) {
         return relist;
       }
     } else {
